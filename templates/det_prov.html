@@ -1,127 +1,170 @@
-
 {% extends "base.html" %}
+
+{% block title %}{{ prova.nome }} — Detalhes{% endblock %}
 
 {% block conteudo %}
 
-<h2>Detalhes da prova</h2>
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('provas.listar_provas') }}">Início</a>
+        <span>›</span>
+        <span>{{ prova.nome }}</span>
+    </div>
+    <h1>📄 {{ prova.nome }}</h1>
+</div>
 
-<p>
-    <strong>Nome:</strong> {{ prova.nome }}
-</p>
+<!-- Stats -->
+<div class="stats-grid" style="margin-bottom:2rem;">
+    <div class="stat-card">
+        <div class="stat-value">{{ prova.quantidade_questoes }}</div>
+        <div class="stat-label">Questões</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ "%.2f"|format(prova.valor_total) }}</div>
+        <div class="stat-label">Valor total</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">
+            {% if questoes %}
+                {{ "%.3f"|format(prova.valor_total / prova.quantidade_questoes) }}
+            {% else %}
+                —
+            {% endif %}
+        </div>
+        <div class="stat-label">Peso/questão</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">
+            {% if questoes %}
+                <span style="color:var(--success);">✓</span>
+            {% else %}
+                <span style="color:var(--warning);">!</span>
+            {% endif %}
+        </div>
+        <div class="stat-label">Gabarito</div>
+    </div>
+</div>
 
-<p>
-    <strong>Quantidade de questões:</strong>
-    {{ prova.quantidade_questoes }}
-</p>
+<!-- Ações principais -->
+<div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-title" style="margin-bottom:1rem;">⚡ Ações rápidas</div>
+    <div style="display:flex; flex-wrap:wrap; gap:0.75rem;">
+        <a href="{{ url_for('results.corr_prova', prova_id=prova.id) }}" class="btn btn-primary">
+            ✅ Corrigir prova
+        </a>
+        <a href="{{ url_for('provas.cadastrar_gabarito', prova_id=prova.id) }}" class="btn btn-ghost">
+            🎯 {% if questoes %}Atualizar gabarito{% else %}Cadastrar gabarito{% endif %}
+        </a>
+        <a href="{{ url_for('sheet.view_sheet', prova_id=prova.id) }}" target="_blank" class="btn btn-ghost">
+            👁️ Visualizar PDF
+        </a>
+        <a href="{{ url_for('sheet.download_sheet', prova_id=prova.id) }}" class="btn btn-ghost">
+            ⬇️ Baixar PDF
+        </a>
+        <a href="{{ url_for('provas.listar_provas') }}" class="btn btn-secondary">
+            ← Voltar
+        </a>
+    </div>
+</div>
 
-<p>
-    <strong>Valor total:</strong>
-    {{ "%.2f"|format(prova.valor_total) }} pontos
-</p>
+<!-- Gabarito -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">🎯 Gabarito cadastrado</div>
+        {% if questoes %}
+            <span class="badge badge-success">✓ Completo</span>
+        {% else %}
+            <span class="badge badge-warning">⚠ Pendente</span>
+        {% endif %}
+    </div>
 
-<hr>
+    {% if questoes %}
 
-<h3>Gabarito cadastrado</h3>
-
-{% if questoes %}
-
-    <table border="1" cellpadding="8">
-
-        <tr>
-            <th>Questão</th>
-            <th>Alternativa correta</th>
-            <th>Peso</th>
-        </tr>
-
+    <div class="gabarito-grid">
         {% for questao in questoes %}
-
-            <tr>
-                <td>{{ questao.numero }}</td>
-
-                <td>
-                    {{ questao.alternativa_correta }}
-                </td>
-
-                <td>
-                    {{ "%.4f"|format(questao.peso) }}
-                </td>
-            </tr>
-
+        <div class="gabarito-item">
+            <span class="gab-num">{{ questao.numero }}</span>
+            <span class="gab-alt">{{ questao.alternativa_correta }}</span>
+            <span class="gab-peso">{{ "%.3f"|format(questao.peso) }}</span>
+        </div>
         {% endfor %}
+    </div>
 
-    </table>
+    {% else %}
 
-{% else %}
+    <div class="empty-state" style="padding:2rem 1rem;">
+        <div class="empty-icon">🎯</div>
+        <h3>Gabarito não cadastrado</h3>
+        <p>Cadastre o gabarito para poder corrigir as provas.</p>
+        <a href="{{ url_for('provas.cadastrar_gabarito', prova_id=prova.id) }}" class="btn btn-primary">
+            Cadastrar gabarito
+        </a>
+    </div>
 
-    <p>Esta prova ainda não possui gabarito.</p>
+    {% endif %}
+</div>
 
-{% endif %}
+<!-- Folha de respostas -->
+<div class="card">
+    <div class="card-title" style="margin-bottom:0.75rem;">📋 Folha de respostas</div>
+    <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1.25rem;">
+        Gere a folha de respostas em branco no formato PDF A4 para distribuir aos alunos.
+        Questões: <strong style="color:var(--text-primary);">{{ prova.quantidade_questoes }}</strong> &nbsp;|&nbsp;
+        Formato: <strong style="color:var(--text-primary);">PDF</strong>
+    </p>
+    <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+        <a href="{{ url_for('sheet.view_sheet', prova_id=prova.id) }}" target="_blank" class="btn btn-primary">
+            👁️ Visualizar e imprimir
+        </a>
+        <a href="{{ url_for('sheet.download_sheet', prova_id=prova.id) }}" class="btn btn-ghost">
+            ⬇️ Baixar PDF
+        </a>
+    </div>
+</div>
 
-<hr>
+<style>
+    .gabarito-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 0.5rem;
+    }
 
-<h3>Folha de respostas</h3>
+    .gabarito-item {
+        background: var(--bg-input);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 0.5rem 0.4rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15rem;
+        text-align: center;
+        transition: var(--transition);
+    }
 
-<p>
-    Gere uma folha em branco para os alunos responderem
-    à prova.
-</p>
+    .gabarito-item:hover {
+        border-color: var(--accent);
+        background: var(--accent-light);
+    }
 
-<p>
-    O documento será gerado automaticamente em formato A4,
-    com a quantidade de questões cadastradas.
-</p>
+    .gab-num {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        font-weight: 600;
+        text-transform: uppercase;
+    }
 
-<p>
-    <strong>Formato:</strong> PDF
-</p>
+    .gab-alt {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--accent);
+        line-height: 1;
+    }
 
-<p>
-    <strong>Questões:</strong>
-    {{ prova.quantidade_questoes }}
-</p>
-
-<p>
-    <a
-        href="{{ url_for(
-            'sheet.view_sheet',
-            prova_id=prova.id
-        ) }}"
-        target="_blank"
-    >
-        <button type="button">
-            Visualizar e imprimir PDF
-        </button>
-    </a>
-</p>
-
-<p>
-    <a
-        href="{{ url_for(
-            'sheet.download_sheet',
-            prova_id=prova.id
-        ) }}"
-    >
-        <button type="button">
-            Baixar PDF
-        </button>
-    </a>
-</p>
-
-<hr>
-
-<h3>Gerenciar gabarito</h3>
-
-<a href="{{ url_for(
-    'provas.cadastrar_gabarito',
-    prova_id=prova.id
-) }}">
-    Cadastrar ou atualizar gabarito
-</a>
-
-<br><br>
-
-<a href="{{ url_for('provas.listar_provas') }}">
-    Voltar às provas
-</a>
+    .gab-peso {
+        font-size: 0.65rem;
+        color: var(--text-muted);
+    }
+</style>
 
 {% endblock %}

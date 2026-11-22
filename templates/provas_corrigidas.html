@@ -1,58 +1,61 @@
-
 {% extends "base.html" %}
+
+{% block title %}Provas corrigidas{% endblock %}
 
 {% block conteudo %}
 
-<h2>Provas corrigidas</h2>
-
-<p>
-    Selecione uma prova para consultar os alunos que possuem correção cadastrada.
-</p>
+<div class="page-header">
+    <h1>✅ Provas corrigidas</h1>
+    <p>Consulte os alunos corrigidos por prova.</p>
+</div>
 
 {% if provas %}
 
-    <table border="1" cellpadding="8">
-
-        <tr>
-            <th>Prova</th>
-            <th>Questões</th>
-            <th>Valor total</th>
-            <th>Alunos corrigidos</th>
-            <th>Ação</th>
-        </tr>
-
-        {% for prova in provas %}
-
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
             <tr>
-
-                <td>{{ prova.nome }}</td>
-
-                <td>{{ prova.quantidade_questoes }}</td>
-
+                <th>Prova</th>
+                <th>Questões</th>
+                <th>Valor total</th>
+                <th>Alunos corrigidos</th>
+                <th>Ação</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for prova in provas %}
+            <tr>
+                <td class="strong">{{ prova.nome }}</td>
                 <td>
-                    {{ "%.2f"|format(prova.valor_total) }}
+                    <span class="badge badge-primary">{{ prova.quantidade_questoes }}</span>
                 </td>
-
-                <td>{{ prova.total_alunos }}</td>
-
+                <td style="color:var(--text-secondary);">{{ "%.2f"|format(prova.valor_total) }} pts</td>
                 <td>
-                    <a href="{{ url_for(
-                        'results.alunos_prova',
-                        prova_id=prova.id
-                    ) }}">
-                        Ver alunos
+                    {% if prova.total_alunos > 0 %}
+                        <span class="badge badge-success">{{ prova.total_alunos }} aluno{% if prova.total_alunos != 1 %}s{% endif %}</span>
+                    {% else %}
+                        <span class="badge badge-warning">Nenhum</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('results.alunos_prova', prova_id=prova.id) }}" class="btn btn-ghost btn-sm">
+                        👥 Ver alunos
                     </a>
                 </td>
-
             </tr>
-
-        {% endfor %}
-
+            {% endfor %}
+        </tbody>
     </table>
+</div>
 
 {% else %}
 
-    <p>Nenhuma prova cadastrada.</p>
+<div class="empty-state">
+    <div class="empty-icon">📭</div>
+    <h3>Nenhuma prova cadastrada</h3>
+    <p>Cadastre provas para visualizá-las aqui.</p>
+    <a href="{{ url_for('provas.listar_provas') }}" class="btn btn-primary">Ver provas</a>
+</div>
 
 {% endif %}
 

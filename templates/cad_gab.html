@@ -1,172 +1,238 @@
-
 {% extends "base.html" %}
+
+{% block title %}Gabarito — {{ prova.nome }}{% endblock %}
 
 {% block conteudo %}
 
-<h2>Cadastrar gabarito oficial</h2>
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('provas.listar_provas') }}">Início</a>
+        <span>›</span>
+        <a href="{{ url_for('provas.detalhes_prova', prova_id=prova.id) }}">{{ prova.nome }}</a>
+        <span>›</span>
+        <span>Gabarito</span>
+    </div>
+    <h1>🎯 Cadastrar gabarito oficial</h1>
+</div>
 
-<p>
-    Prova: <strong>{{ prova.nome }}</strong>
-</p>
+<!-- Info da prova -->
+<div class="stats-grid" style="max-width:600px; margin-bottom:2rem;">
+    <div class="stat-card">
+        <div class="stat-value">{{ prova.quantidade_questoes }}</div>
+        <div class="stat-label">Questões</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ "%.2f"|format(prova.valor_total) }}</div>
+        <div class="stat-label">Valor total</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ "%.3f"|format(peso_questao) }}</div>
+        <div class="stat-label">Peso/questão</div>
+    </div>
+</div>
 
-<p>
-    Quantidade de questões: {{ prova.quantidade_questoes }}
-</p>
+<!-- Tabs de métodos -->
+<div class="tabs" id="gabarito-tabs">
+    <button class="tab-btn active" data-tab="sequencia">📝 Por sequência</button>
+    <button class="tab-btn" data-tab="excel">📊 Por Excel</button>
+    <button class="tab-btn" data-tab="manual">🖱️ Manual</button>
+</div>
 
-<p>
-    Valor total: {{ "%.2f"|format(prova.valor_total) }} pontos
-</p>
-
-<p>
-    <strong>
-        Cada questão vale:
-        {{ "%.4f"|format(peso_questao) }} pontos
-    </strong>
-</p>
-
-<hr>
-
-<h3>Opção 1 - Cadastro por sequência</h3>
-
-<p>
-    Digite ou cole as alternativas na ordem das questões.
-    Você pode separar as letras por espaços, vírgulas ou quebras de linha.
-</p>
-
-<p>
-    Exemplo: ABCDEACDBE
-</p>
-
-<form method="POST">
-
-    <input type="hidden" name="acao" value="sequencia">
-
-    <p>
-        <label for="sequencia">
-            <strong>Sequência de respostas:</strong>
-        </label>
-    </p>
-
-    <textarea
-        id="sequencia"
-        name="sequencia"
-        rows="5"
-        cols="50"
-        placeholder="Exemplo: ABCDEACDBE"
-        required
-    ></textarea>
-
-    <p>
-        <button type="submit">
-            Cadastrar sequência
-        </button>
-    </p>
-
-</form>
-
-<hr>
-
-<h3>Opção 2 - Importar arquivo Excel</h3>
-
-<p>
-    Importe uma planilha com duas colunas:
-    número da questão e alternativa correta.
-</p>
-
-<p>
-    Exemplo de organização:
-</p>
-
-<table border="1" cellpadding="6" cellspacing="0">
-    <tr>
-        <th>Questão</th>
-        <th>Resposta</th>
-    </tr>
-    <tr>
-        <td>1</td>
-        <td>A</td>
-    </tr>
-    <tr>
-        <td>2</td>
-        <td>C</td>
-    </tr>
-    <tr>
-        <td>3</td>
-        <td>B</td>
-    </tr>
-</table>
-
-<p>
-    A planilha pode ter um cabeçalho na primeira linha.
-    Salve o arquivo no formato .xlsx.
-</p>
-
-<form method="POST" enctype="multipart/form-data">
-
-    <input type="hidden" name="acao" value="excel">
-
-    <p>
-        <input
-            type="file"
-            name="arquivo_excel"
-            accept=".xlsx"
-            required
-        >
-    </p>
-
-    <button type="submit">
-        Importar gabarito do Excel
-    </button>
-
-</form>
-
-<hr>
-
-<h3>Opção 3 - Cadastro manual</h3>
-
-<p>
-    Selecione a alternativa correta de cada questão.
-</p>
-
-<form method="POST">
-
-    <input type="hidden" name="acao" value="manual">
-
-    {% for numero in range(1, prova.quantidade_questoes + 1) %}
-
-        <p>
-            <strong>Questão {{ numero }}:</strong>
-
-            <select name="questao_{{ numero }}" required>
-
-                <option value="">Selecione</option>
-
-                {% for alternativa in ["A", "B", "C", "D", "E"] %}
-
-                    <option
-                        value="{{ alternativa }}"
-                        {% if respostas_atuais.get(numero) == alternativa %}
-                            selected
-                        {% endif %}
-                    >
-                        {{ alternativa }}
-                    </option>
-
-                {% endfor %}
-
-            </select>
-
-            <small>
-                ({{ "%.4f"|format(peso_questao) }} pontos)
-            </small>
+<!-- Tab: Sequência -->
+<div class="tab-panel active" id="tab-sequencia">
+    <div class="card" style="max-width:600px;">
+        <div class="card-title" style="margin-bottom:1rem;">
+            Sequência de alternativas
+        </div>
+        <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1.25rem;">
+            Digite as {{ prova.quantidade_questoes }} respostas em sequência (A–E).
+            Pode separar por vírgulas, espaços ou quebras de linha.
+            <br>Exemplo: <code style="background:var(--bg-input);padding:2px 6px;border-radius:4px;color:#a5b4fc;">ABCDE ABCDE</code>
         </p>
 
-    {% endfor %}
+        <form method="POST">
+            <input type="hidden" name="acao" value="sequencia">
 
-    <button type="submit">
-        Salvar gabarito manual
-    </button>
+            <div class="form-group">
+                <label class="form-label" for="sequencia">Sequência de respostas</label>
+                <textarea
+                    id="sequencia"
+                    name="sequencia"
+                    class="form-control"
+                    rows="4"
+                    placeholder="ABCDEABCDE..."
+                    required
+                ></textarea>
+                <span class="form-hint" id="seq-counter">0 / {{ prova.quantidade_questoes }} respostas</span>
+            </div>
 
-</form>
+            <button type="submit" class="btn btn-primary">
+                Salvar sequência →
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Tab: Excel -->
+<div class="tab-panel" id="tab-excel">
+    <div class="card" style="max-width:600px;">
+        <div class="card-title" style="margin-bottom:1rem;">
+            Importar planilha Excel (.xlsx)
+        </div>
+        <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1rem;">
+            A planilha deve ter duas colunas: <strong>Questão</strong> e <strong>Resposta</strong>.
+        </p>
+
+        <div class="table-wrapper" style="margin-bottom:1.25rem;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Questão</th>
+                        <th>Resposta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>1</td><td>A</td></tr>
+                    <tr><td>2</td><td>C</td></tr>
+                    <tr><td>3</td><td>B</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="acao" value="excel">
+
+            <div class="form-group">
+                <label class="form-label">Arquivo Excel</label>
+                <input
+                    type="file"
+                    name="arquivo_excel"
+                    accept=".xlsx"
+                    required
+                    class="form-control"
+                    style="cursor:pointer;"
+                >
+                <span class="form-hint">Formato: .xlsx — pode ter cabeçalho na primeira linha</span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                📥 Importar gabarito
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Tab: Manual -->
+<div class="tab-panel" id="tab-manual">
+    <div class="card">
+        <div class="card-title" style="margin-bottom:1.25rem;">
+            Seleção manual questão por questão
+        </div>
+
+        <form method="POST">
+            <input type="hidden" name="acao" value="manual">
+
+            <div class="questoes-grid">
+                {% for numero in range(1, prova.quantidade_questoes + 1) %}
+                <div class="questao-item">
+                    <label class="questao-num">Q{{ numero }}</label>
+                    <select name="questao_{{ numero }}" class="form-control questao-select" required>
+                        <option value="">—</option>
+                        {% for alt in ["A", "B", "C", "D", "E"] %}
+                        <option
+                            value="{{ alt }}"
+                            {% if respostas_atuais.get(numero) == alt %}selected{% endif %}
+                        >{{ alt }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div style="margin-top:1.5rem; display:flex; gap:0.75rem; flex-wrap:wrap;">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    💾 Salvar gabarito manual
+                </button>
+                <button type="button" class="btn btn-ghost" id="preencher-tudo">
+                    Preencher tudo com A
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .questoes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .questao-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+
+    .questao-num {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .questao-select {
+        padding: 0.5rem 0.6rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    code { font-family: monospace; }
+</style>
+
+<script>
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+            document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+            btn.classList.add('active');
+            document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        });
+    });
+
+    // Contador de sequência
+    const seqInput = document.getElementById('sequencia');
+    const seqCount = document.getElementById('seq-counter');
+    const total    = {{ prova.quantidade_questoes }};
+
+    if (seqInput) {
+        seqInput.addEventListener('input', function () {
+            const limpo = seqInput.value.replace(/[\s,;]/g, '');
+            const n     = limpo.length;
+            seqCount.textContent = n + ' / ' + total + ' respostas';
+            seqCount.style.color = n === total ? '#6ee7b7' : n > total ? '#fca5a5' : '';
+        });
+    }
+
+    // Preencher tudo com A
+    const btnPreencher = document.getElementById('preencher-tudo');
+    if (btnPreencher) {
+        btnPreencher.addEventListener('click', function () {
+            document.querySelectorAll('.questao-select').forEach(function (sel) {
+                sel.value = 'A';
+            });
+        });
+    }
+
+    // Manter tab ativa se houver erro (via hash)
+    if (window.location.hash) {
+        const tab = window.location.hash.replace('#', '');
+        const btn = document.querySelector('[data-tab="' + tab + '"]');
+        if (btn) btn.click();
+    }
+</script>
 
 {% endblock %}

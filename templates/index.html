@@ -1,74 +1,147 @@
-
 {% extends "base.html" %}
+
+{% block title %}Início — Corretor de Provas{% endblock %}
 
 {% block conteudo %}
 
-<h2>Provas cadastradas</h2>
-
-<a href="{{ url_for('provas.cadastrar_prova') }}">
-    Cadastrar nova prova
-</a>
-
-<hr>
+<div class="page-header">
+    <h1>📋 Provas cadastradas</h1>
+    <p>Gerencie e corrija suas provas objetivas.</p>
+</div>
 
 {% if provas %}
 
-    <ul>
+<div class="card-header" style="margin-bottom:1.5rem;">
+    <span style="color:var(--text-secondary);font-size:0.9rem;">
+        {{ provas|length }} prova{% if provas|length != 1 %}s{% endif %} encontrada{% if provas|length != 1 %}s{% endif %}
+    </span>
+    <a href="{{ url_for('provas.cadastrar_prova') }}" class="btn btn-primary">
+        ＋ Nova prova
+    </a>
+</div>
 
-        {% for prova in provas %}
+<div class="provas-grid">
+    {% for prova in provas %}
+    <div class="prova-card">
+        <div class="prova-card-top">
+            <div class="prova-icon">📄</div>
+            <div class="prova-info">
+                <h2 class="prova-nome">{{ prova.nome }}</h2>
+                <div class="prova-meta">
+                    <span class="badge badge-primary">{{ prova.quantidade_questoes }} questões</span>
+                    <span class="badge badge-purple">{{ "%.2f"|format(prova.valor_total) }} pts</span>
+                </div>
+            </div>
+        </div>
 
-            <li>
-
-                <strong>{{ prova.nome }}</strong>
-
-                - {{ prova.quantidade_questoes }} questões
-
-                - Valor:
-                {{ "%.2f"|format(prova.valor_total) }} pontos
-
-                - <a href="{{ url_for(
-                    'provas.detalhes_prova',
-                    prova_id=prova.id
-                ) }}">
-                    Ver detalhes
-                </a>
-
-                - <a href="{{ url_for(
-                    'results.corr_prova',
-                    prova_id=prova.id
-                ) }}">
-                    Corrigir prova
-                </a>
-
-                <form
-                    method="POST"
-                    action="{{ url_for(
-                        'provas.excluir_prova',
-                        prova_id=prova.id
-                    ) }}"
-                    style="display:inline;"
-
-                    onsubmit="return confirm(
-                        'Deseja realmente excluir esta prova e seus resultados?'
-                    );"
-                >
-
-                    <button type="submit">
-                        Excluir
-                    </button>
-
-                </form>
-
-            </li>
-
-        {% endfor %}
-
-    </ul>
+        <div class="prova-actions">
+            <a href="{{ url_for('provas.detalhes_prova', prova_id=prova.id) }}" class="btn btn-ghost btn-sm">
+                🔍 Detalhes
+            </a>
+            <a href="{{ url_for('results.corr_prova', prova_id=prova.id) }}" class="btn btn-primary btn-sm">
+                ✅ Corrigir
+            </a>
+            <form
+                method="POST"
+                action="{{ url_for('provas.excluir_prova', prova_id=prova.id) }}"
+                style="display:inline;"
+                onsubmit="return confirm('Deseja realmente excluir esta prova e todos os seus resultados?');"
+            >
+                <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
 
 {% else %}
 
-    <p>Nenhuma prova cadastrada.</p>
+<div class="empty-state">
+    <div class="empty-icon">📭</div>
+    <h3>Nenhuma prova cadastrada</h3>
+    <p>Comece criando sua primeira prova.</p>
+    <a href="{{ url_for('provas.cadastrar_prova') }}" class="btn btn-primary btn-lg">
+        ＋ Criar primeira prova
+    </a>
+</div>
 
 {% endif %}
+
+<style>
+    .provas-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1rem;
+    }
+
+    .prova-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.4rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.1rem;
+        transition: var(--transition);
+    }
+
+    .prova-card:hover {
+        border-color: rgba(79, 99, 210, 0.4);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+    }
+
+    .prova-card-top {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.9rem;
+    }
+
+    .prova-icon {
+        width: 44px;
+        height: 44px;
+        background: var(--accent-light);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        flex-shrink: 0;
+    }
+
+    .prova-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .prova-nome {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .prova-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+
+    .prova-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    @media (max-width: 480px) {
+        .provas-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 
 {% endblock %}

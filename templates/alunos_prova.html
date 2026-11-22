@@ -1,87 +1,100 @@
-
 {% extends "base.html" %}
+
+{% block title %}Alunos — {{ prova.nome }}{% endblock %}
 
 {% block conteudo %}
 
-<h2>Alunos corrigidos</h2>
-
-<h3>{{ prova.nome }}</h3>
-
-<p>
-    Quantidade de questões:
-    {{ prova.quantidade_questoes }}
-</p>
-
-<p>
-    Valor total:
-    {{ "%.2f"|format(prova.valor_total) }} pontos
-</p>
-
-<hr>
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('provas.listar_provas') }}">Início</a>
+        <span>›</span>
+        <a href="{{ url_for('results.listar_provas_corrigidas') }}">Provas corrigidas</a>
+        <span>›</span>
+        <span>{{ prova.nome }}</span>
+    </div>
+    <h1>👥 Alunos corrigidos</h1>
+    <p>{{ prova.nome }} &nbsp;·&nbsp; {{ prova.quantidade_questoes }} questões &nbsp;·&nbsp; {{ "%.2f"|format(prova.valor_total) }} pts</p>
+</div>
 
 {% if resultados %}
 
-    <table border="1" cellpadding="8">
-
-        <tr>
-            <th>Aluno</th>
-            <th>Acertos</th>
-            <th>Erros</th>
-            <th>Em branco</th>
-            <th>Aproveitamento</th>
-            <th>Nota</th>
-            <th>Resultado</th>
-        </tr>
-
-        {% for resultado in resultados %}
-
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
             <tr>
-
-                <td>{{ resultado.aluno_nome }}</td>
+                <th>Aluno</th>
+                <th>Acertos</th>
+                <th>Erros</th>
+                <th>Em branco</th>
+                <th>Aproveitamento</th>
+                <th>Nota</th>
+                <th>Detalhes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for resultado in resultados %}
+            {% set pct = resultado.percentual %}
+            <tr>
+                <td class="strong">{{ resultado.aluno_nome }}</td>
 
                 <td>
-                    {{ resultado.acertos }}/{{ resultado.total_questoes }}
+                    <span style="color:var(--success);font-weight:600;">{{ resultado.acertos }}</span>
+                    <span style="color:var(--text-muted);">/{{ resultado.total_questoes }}</span>
                 </td>
 
-                <td>{{ resultado.erros }}</td>
+                <td style="color:var(--danger);font-weight:600;">{{ resultado.erros }}</td>
 
-                <td>{{ resultado.em_branco }}</td>
+                <td style="color:var(--text-muted);">{{ resultado.em_branco }}</td>
 
                 <td>
-                    {{ "%.2f"|format(resultado.percentual) }}%
+                    <div style="display:flex;align-items:center;gap:0.5rem;min-width:110px;">
+                        <div class="progress-bar-wrap" style="flex:1;height:6px;">
+                            <div class="progress-bar-fill" style="width:{{ pct }}%;
+                                {% if pct >= 70 %}background:linear-gradient(90deg,#059669,#10b981);
+                                {% elif pct >= 50 %}background:linear-gradient(90deg,#d97706,#f59e0b);
+                                {% else %}background:linear-gradient(90deg,#dc2626,#ef4444);{% endif %}
+                            "></div>
+                        </div>
+                        <span style="font-size:0.8rem;color:var(--text-secondary);white-space:nowrap;">
+                            {{ "%.1f"|format(pct) }}%
+                        </span>
+                    </div>
                 </td>
 
                 <td>
-                    {{ "%.2f"|format(resultado.nota) }}
+                    <span class="badge {% if pct >= 70 %}badge-success{% elif pct >= 50 %}badge-warning{% else %}badge-danger{% endif %}">
+                        {{ "%.2f"|format(resultado.nota) }}
+                    </span>
                 </td>
 
                 <td>
-                    <a href="{{ url_for(
-                        'results.show_result',
-                        result_id=resultado.id
-                    ) }}">
-                        Ver detalhes
+                    <a href="{{ url_for('results.show_result', result_id=resultado.id) }}" class="btn btn-ghost btn-sm">
+                        🔍 Ver
                     </a>
                 </td>
-
             </tr>
-
-        {% endfor %}
-
+            {% endfor %}
+        </tbody>
     </table>
+</div>
 
 {% else %}
 
-    <p>
-        Nenhum aluno possui correção cadastrada para esta prova.
-    </p>
+<div class="empty-state">
+    <div class="empty-icon">👤</div>
+    <h3>Nenhum aluno corrigido</h3>
+    <p>Nenhum aluno possui correção cadastrada para esta prova.</p>
+    <a href="{{ url_for('results.corr_prova', prova_id=prova.id) }}" class="btn btn-primary">
+        ✅ Corrigir prova
+    </a>
+</div>
 
 {% endif %}
 
-<br>
-
-<a href="{{ url_for('results.listar_provas_corrigidas') }}">
-    Voltar para provas corrigidas
-</a>
+<div style="margin-top:1.5rem;">
+    <a href="{{ url_for('results.listar_provas_corrigidas') }}" class="btn btn-ghost">
+        ← Voltar para provas corrigidas
+    </a>
+</div>
 
 {% endblock %}

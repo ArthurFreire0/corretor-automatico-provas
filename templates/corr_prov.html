@@ -1,741 +1,440 @@
-
 {% extends "base.html" %}
+
+{% block title %}Corrigir — {{ prova.nome }}{% endblock %}
 
 {% block conteudo %}
 
-<h2>Corrigir prova</h2>
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('provas.listar_provas') }}">Início</a>
+        <span>›</span>
+        <a href="{{ url_for('provas.detalhes_prova', prova_id=prova.id) }}">{{ prova.nome }}</a>
+        <span>›</span>
+        <span>Corrigir</span>
+    </div>
+    <h1>✅ Corrigir prova</h1>
+    <p>{{ prova.nome }} &nbsp;·&nbsp; {{ prova.quantidade_questoes }} questões &nbsp;·&nbsp; {{ "%.2f"|format(prova.valor_total) }} pontos</p>
+</div>
 
-<h3>{{ prova.nome }}</h3>
-
-<p>
-    Quantidade de questões:
-    {{ prova.quantidade_questoes }}
-</p>
-
-<p>
-    Valor total:
-    {{ "%.2f"|format(prova.valor_total) }} pontos
-</p>
-
-<hr>
-
-<h3>Identificação do aluno</h3>
-
-<label for="aluno_nome">Nome do aluno:</label>
-
-<input
-    type="text"
-    id="aluno_nome"
-    placeholder="Digite o nome do aluno"
-    required
->
-
-<input
-    type="hidden"
-    id="prova-id"
-    value="{{ prova.id }}"
->
-
-<input
-    type="hidden"
-    id="quantidade-questoes"
-    value="{{ prova.quantidade_questoes }}"
->
-
-<hr>
-
-<h3>Corrigir por imagem</h3>
-
-<p>
-    Utilize a câmera ou selecione a imagem da folha de respostas preenchida.
-</p>
+<!-- Hidden inputs -->
+<input type="hidden" id="prova-id" value="{{ prova.id }}">
+<input type="hidden" id="quantidade-questoes" value="{{ prova.quantidade_questoes }}">
 
 {% if prova.quantidade_questoes > 50 %}
-
-<p>
-    <strong>Atenção:</strong>
-    esta prova possui duas páginas. Envie as imagens na ordem:
-    primeiro a página 1 e depois a página 2.
-</p>
-
-{% else %}
-
-<p>
-    Esta prova utiliza apenas uma página.
-</p>
-
+<div class="alert alert-warning" style="margin-bottom:1.5rem;">
+    ⚠️ <strong>Prova com 2 páginas.</strong>
+    Envie as imagens em ordem: primeiro a página 1, depois a página 2.
+</div>
 {% endif %}
 
-<div>
+<!-- Identificação do aluno -->
+<div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-title" style="margin-bottom:1rem;">👤 Identificação do aluno</div>
+    <div style="max-width:400px;">
+        <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="aluno_nome">Nome completo do aluno</label>
+            <input
+                type="text"
+                id="aluno_nome"
+                class="form-control"
+                placeholder="Digite o nome do aluno"
+                required
+                autofocus
+            >
+        </div>
+    </div>
+</div>
 
-    <button type="button" id="abrir-camera">
-        Abrir câmera
-    </button>
+<!-- Correção por imagem (OMR) -->
+<div class="card" style="margin-bottom:1.5rem;">
 
-    <button
-        type="button"
-        id="fechar-camera"
-        disabled
+    <div class="card-title" style="margin-bottom:0.5rem;">📷 Reconhecimento por imagem (OMR)</div>
+    <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1.25rem;">
+        Fotografe ou selecione a imagem da folha de respostas preenchida.
+        {% if prova.quantidade_questoes <= 50 %}Uma imagem (página única).{% else %}Duas imagens: página 1 e página 2.{% endif %}
+    </p>
+
+    <!-- Câmera -->
+    <div class="camera-controls" style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+        <button type="button" id="abrir-camera" class="btn btn-ghost">
+            📷 Abrir câmera
+        </button>
+        <button type="button" id="fechar-camera" class="btn btn-secondary" disabled>
+            ✕ Fechar câmera
+        </button>
+    </div>
+
+    <video
+        id="camera"
+        autoplay
+        playsinline
+        style="display:none; width:100%; max-width:560px; border-radius:var(--radius-sm); border:1px solid var(--border); background:#000;"
+    ></video>
+
+    <div id="capturar-wrap" style="display:none; margin-top:0.75rem;">
+        <button type="button" id="capturar" class="btn btn-primary">
+            📸 Capturar página
+        </button>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Upload de arquivo -->
+    <div class="form-group">
+        <label class="form-label" for="arquivo-imagem">Ou selecione imagem(ns) do dispositivo</label>
+        <input
+            type="file"
+            id="arquivo-imagem"
+            accept="image/png,image/jpeg,image/webp"
+            multiple
+            class="form-control"
+            style="cursor:pointer;"
+        >
+        <span class="form-hint">JPG, PNG ou WEBP — máximo 10 MB por imagem</span>
+    </div>
+
+    <p id="quantidade-imagens" style="color:var(--text-muted);font-size:0.85rem;margin-bottom:0.75rem;">
+        Nenhuma imagem selecionada.
+    </p>
+
+    <img
+        id="preview"
+        alt="Pré-visualização"
+        style="display:none; width:100%; max-width:400px; border-radius:var(--radius-sm); border:1px solid var(--border); margin-bottom:1rem;"
     >
-        Fechar câmera
-    </button>
+
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <div id="enviar-wrap" style="display:none; margin-bottom:0.75rem;">
+        <button type="button" id="enviar-imagem" class="btn btn-primary btn-lg">
+            🔍 Reconhecer respostas
+        </button>
+    </div>
+
+    <!-- Mensagem OMR -->
+    <div id="mensagem-container" style="display:none;">
+        <div id="mensagem-imagem" class="alert alert-info"></div>
+    </div>
 
 </div>
 
-<br>
+<!-- Formulário de correção manual -->
+<div class="card" id="secao-respostas">
 
-<video
-    id="camera"
-    autoplay
-    playsinline
-    style="display:none; width:100%; max-width:600px; border:1px solid #ccc;"
-></video>
+    <div class="card-title" style="margin-bottom:0.5rem;">📝 Respostas do aluno</div>
+    <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1.25rem;">
+        As respostas reconhecidas serão preenchidas abaixo. Revise antes de corrigir.
+    </p>
 
-<br>
-
-<button
-    type="button"
-    id="capturar"
-    style="display:none;"
->
-    Capturar página
-</button>
-
-<hr>
-
-<label for="arquivo-imagem">
-    Ou selecione a(s) imagem(ns) do dispositivo:
-</label>
-
-<br><br>
-
-<input
-    type="file"
-    id="arquivo-imagem"
-    accept="image/png,image/jpeg,image/webp"
-    multiple
->
-
-<p id="quantidade-imagens">
-    Nenhuma imagem selecionada.
-</p>
-
-<img
-    id="preview"
-    alt="Pré-visualização da folha"
-    style="display:none; width:100%; max-width:500px; border:1px solid #ccc;"
->
-
-<br><br>
-
-<button
-    type="button"
-    id="enviar-imagem"
-    style="display:none;"
->
-    Reconhecer respostas
-</button>
-
-<p id="mensagem-imagem"></p>
-
-<canvas id="canvas" style="display:none;"></canvas>
-
-<hr>
-
-<h3>Respostas do aluno</h3>
-
-<p>
-    As respostas reconhecidas serão preenchidas abaixo.
-    Confira e altere qualquer alternativa que estiver incorreta.
-</p>
-
-<form
-    method="POST"
-    action="{{ url_for('results.corr_prova', prova_id=prova.id) }}"
-    id="form-correcao"
->
-
-    <input
-        type="hidden"
-        name="aluno_nome"
-        id="aluno_nome_manual"
+    <form
+        method="POST"
+        action="{{ url_for('results.corr_prova', prova_id=prova.id) }}"
+        id="form-correcao"
     >
+        <input type="hidden" name="aluno_nome" id="aluno_nome_manual">
 
-    {% for questao in questoes %}
-
-        <div>
-
-            <p>
-                <strong>Questão {{ questao.numero }}</strong>
-            </p>
-
-            <p>
-                Valor:
-                {{ "%.4f"|format(questao.peso) }} pontos
-            </p>
-
-            <select
-                name="questao_{{ questao.numero }}"
-                id="questao_{{ questao.numero }}"
-            >
-
-                <option value="">Em branco</option>
-
-                {% for alternativa in ["A", "B", "C", "D", "E"] %}
-
-                    <option value="{{ alternativa }}">
-                        {{ alternativa }}
-                    </option>
-
-                {% endfor %}
-
-            </select>
-
-            <p
-                id="status_{{ questao.numero }}"
-                style="font-size:13px; color:#555;"
-            >
-                Aguardando reconhecimento ou preenchimento manual.
-            </p>
-
-            <hr>
-
+        <div class="respostas-grid">
+            {% for questao in questoes %}
+            <div class="resposta-item" id="item_{{ questao.numero }}">
+                <div class="resp-header">
+                    <span class="resp-num">Q{{ questao.numero }}</span>
+                    <span class="resp-peso">{{ "%.3f"|format(questao.peso) }}pts</span>
+                </div>
+                <select
+                    name="questao_{{ questao.numero }}"
+                    id="questao_{{ questao.numero }}"
+                    class="form-control resp-select"
+                >
+                    <option value="">—</option>
+                    {% for alt in ["A", "B", "C", "D", "E"] %}
+                    <option value="{{ alt }}">{{ alt }}</option>
+                    {% endfor %}
+                </select>
+                <div
+                    id="status_{{ questao.numero }}"
+                    class="resp-status"
+                    title=""
+                ></div>
+            </div>
+            {% endfor %}
         </div>
 
-    {% endfor %}
+        <div style="margin-top:1.75rem; display:flex; gap:0.75rem; flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary btn-lg">
+                ✅ Corrigir prova
+            </button>
+            <a href="{{ url_for('provas.detalhes_prova', prova_id=prova.id) }}" class="btn btn-ghost btn-lg">
+                ← Voltar
+            </a>
+        </div>
 
-    <button type="submit">
-        Corrigir manualmente
-    </button>
+    </form>
+</div>
 
-</form>
+<style>
+    .respostas-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .resposta-item {
+        background: var(--bg-input);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 0.6rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        transition: var(--transition);
+    }
+
+    .resposta-item.reconhecida {
+        border-color: rgba(16, 185, 129, 0.4);
+        background: rgba(16, 185, 129, 0.05);
+    }
+
+    .resposta-item.duvida,
+    .resposta-item.dupla {
+        border-color: rgba(245, 158, 11, 0.4);
+        background: rgba(245, 158, 11, 0.05);
+    }
+
+    .resp-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .resp-num {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+    }
+
+    .resp-peso {
+        font-size: 0.65rem;
+        color: var(--text-muted);
+    }
+
+    .resp-select {
+        font-size: 1rem;
+        font-weight: 700;
+        text-align: center;
+        padding: 0.4rem;
+    }
+
+    .resp-status {
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        min-height: 14px;
+        line-height: 1.3;
+        text-align: center;
+    }
+</style>
 
 <script>
+    const provaId           = document.getElementById('prova-id').value;
+    const quantidadeQuestoes = Number(document.getElementById('quantidade-questoes').value);
 
+    const camera            = document.getElementById('camera');
+    const canvas            = document.getElementById('canvas');
+    const abrirCamera       = document.getElementById('abrir-camera');
+    const fecharCamera      = document.getElementById('fechar-camera');
+    const capturarWrap      = document.getElementById('capturar-wrap');
+    const capturar          = document.getElementById('capturar');
+    const arquivoImagem     = document.getElementById('arquivo-imagem');
+    const preview           = document.getElementById('preview');
+    const enviarWrap        = document.getElementById('enviar-wrap');
+    const enviarImagem      = document.getElementById('enviar-imagem');
+    const mensagemContainer = document.getElementById('mensagem-container');
+    const mensagem          = document.getElementById('mensagem-imagem');
+    const qtdImagensTexto   = document.getElementById('quantidade-imagens');
+    const nomeAluno         = document.getElementById('aluno_nome');
+    const nomeAlunoManual   = document.getElementById('aluno_nome_manual');
+    const formulario        = document.getElementById('form-correcao');
 
-    // ELEMENTOS DA PÁGINA
-    const provaId = document.getElementById("prova-id").value;
-
-    const quantidadeQuestoes = Number(
-        document.getElementById("quantidade-questoes").value
-    );
-
-    const camera = document.getElementById("camera");
-    const canvas = document.getElementById("canvas");
-
-    const abrirCamera = document.getElementById("abrir-camera");
-    const fecharCamera = document.getElementById("fechar-camera");
-    const capturar = document.getElementById("capturar");
-
-    const arquivoImagem = document.getElementById("arquivo-imagem");
-    const preview = document.getElementById("preview");
-
-    const enviarImagem = document.getElementById("enviar-imagem");
-    const mensagem = document.getElementById("mensagem-imagem");
-
-    const quantidadeImagensTexto = document.getElementById(
-        "quantidade-imagens"
-    );
-
-    const nomeAluno = document.getElementById("aluno_nome");
-
-    const nomeAlunoManual = document.getElementById(
-        "aluno_nome_manual"
-    );
-
-    const formulario = document.getElementById("form-correcao");
-
-
-    // VARIÁVEIS
-    
-
-    let fluxoCamera = null;
-
+    let fluxoCamera        = null;
     let imagensSelecionadas = [];
+    let urlPreview          = null;
 
-    let urlPreview = null;
-
-
-    
-    // ATUALIZAR PRÉ-VISUALIZAÇÃO
+    function mostrarMensagem(texto, tipo) {
+        mensagem.textContent = texto;
+        mensagem.className   = 'alert alert-' + (tipo || 'info');
+        mensagemContainer.style.display = 'block';
+    }
 
     function atualizarImagens() {
-
-        if (urlPreview) {
-
-            URL.revokeObjectURL(urlPreview);
-
-            urlPreview = null;
-        }
+        if (urlPreview) { URL.revokeObjectURL(urlPreview); urlPreview = null; }
 
         if (imagensSelecionadas.length === 0) {
-
-            preview.style.display = "none";
-
-            quantidadeImagensTexto.textContent =
-                "Nenhuma imagem selecionada.";
-
-            enviarImagem.style.display = "none";
-
+            preview.style.display   = 'none';
+            enviarWrap.style.display = 'none';
+            qtdImagensTexto.textContent = 'Nenhuma imagem selecionada.';
             return;
         }
 
-        urlPreview = URL.createObjectURL(
-            imagensSelecionadas[0]
-        );
-
-        preview.src = urlPreview;
-
-        preview.style.display = "block";
-
-        quantidadeImagensTexto.textContent =
-            imagensSelecionadas.length +
-            " imagem(ns) selecionada(s).";
-
-        enviarImagem.style.display = "inline-block";
+        urlPreview          = URL.createObjectURL(imagensSelecionadas[0]);
+        preview.src         = urlPreview;
+        preview.style.display   = 'block';
+        enviarWrap.style.display = 'block';
+        qtdImagensTexto.textContent = imagensSelecionadas.length + ' imagem(ns) selecionada(s).';
     }
-
-
-    // ADICIONAR IMAGEM
 
     function adicionarImagem(blob) {
-
         imagensSelecionadas.push(blob);
-
         atualizarImagens();
-
-        mensagem.textContent =
-            "Página capturada. Total de imagens: " +
-            imagensSelecionadas.length;
+        mostrarMensagem('Página capturada. Total: ' + imagensSelecionadas.length, 'info');
     }
 
-
-    // ABRIR CÂMERA COM MAIOR RESOLUÇÃO
-
-    abrirCamera.addEventListener("click", async function () {
-
-        if (
-            !navigator.mediaDevices ||
-            !navigator.mediaDevices.getUserMedia
-        ) {
-
-            mensagem.textContent =
-                "A câmera não está disponível neste endereço. Utilize HTTPS ou localhost.";
-
+    // CÂMERA
+    abrirCamera.addEventListener('click', async function () {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            mostrarMensagem('Câmera indisponível. Use HTTPS ou localhost.', 'warning');
             return;
         }
-
         try {
-
             fluxoCamera = await navigator.mediaDevices.getUserMedia({
-
-                video: {
-
-                    facingMode: {
-                        ideal: "environment"
-                    },
-
-                    width: {
-                        ideal: 1920
-                    },
-
-                    height: {
-                        ideal: 1080
-                    }
-
-                },
-
+                video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
                 audio: false
-
             });
-
             camera.srcObject = fluxoCamera;
-
             await camera.play();
-
-            camera.style.display = "block";
-
-            capturar.style.display = "inline-block";
-
-            abrirCamera.disabled = true;
-
-            fecharCamera.disabled = false;
-
-            // Mostrar a resolução realmente fornecida pelo navegador.
-            const configuracao = fluxoCamera
-                .getVideoTracks()[0]
-                .getSettings();
-
-            console.log(
-                "Resolução da câmera:",
-                configuracao.width,
-                "x",
-                configuracao.height
-            );
-
-            mensagem.textContent =
-                "Câmera aberta. Resolução: " +
-                configuracao.width +
-                " x " +
-                configuracao.height +
-                ". Posicione a folha inteira na imagem.";
-
-        } catch (erro) {
-
-            mensagem.textContent =
-                "Não foi possível abrir a câmera. Verifique as permissões e a disponibilidade da câmera.";
-
-            console.error("Erro ao abrir câmera:", erro);
+            camera.style.display      = 'block';
+            capturarWrap.style.display = 'block';
+            abrirCamera.disabled       = true;
+            fecharCamera.disabled      = false;
+            const cfg = fluxoCamera.getVideoTracks()[0].getSettings();
+            mostrarMensagem('Câmera aberta (' + cfg.width + 'x' + cfg.height + '). Posicione a folha inteira.', 'info');
+        } catch (e) {
+            mostrarMensagem('Não foi possível abrir a câmera. Verifique as permissões.', 'danger');
         }
-
     });
 
-
-    // FECHAR CÂMERA
-
-    fecharCamera.addEventListener("click", function () {
-
-        if (fluxoCamera) {
-
-            fluxoCamera.getTracks().forEach(function (trilha) {
-
-                trilha.stop();
-
-            });
-
-            fluxoCamera = null;
-        }
-
-        camera.srcObject = null;
-
-        camera.style.display = "none";
-
-        capturar.style.display = "none";
-
-        abrirCamera.disabled = false;
-
-        fecharCamera.disabled = true;
-
-        mensagem.textContent = "Câmera fechada.";
+    fecharCamera.addEventListener('click', function () {
+        if (fluxoCamera) { fluxoCamera.getTracks().forEach(function (t) { t.stop(); }); fluxoCamera = null; }
+        camera.srcObject           = null;
+        camera.style.display       = 'none';
+        capturarWrap.style.display = 'none';
+        abrirCamera.disabled       = false;
+        fecharCamera.disabled      = true;
+        mostrarMensagem('Câmera fechada.', 'info');
     });
 
-
-    // CAPTURAR IMAGEM DA CÂMERA
-
-    capturar.addEventListener("click", function () {
-
+    capturar.addEventListener('click', function () {
         if (!camera.videoWidth || !camera.videoHeight) {
-
-            mensagem.textContent =
-                "Aguarde a câmera iniciar.";
-
+            mostrarMensagem('Aguarde a câmera iniciar.', 'warning');
             return;
         }
-
-        canvas.width = camera.videoWidth;
-
+        canvas.width  = camera.videoWidth;
         canvas.height = camera.videoHeight;
-
-        console.log(
-            "Resolução da imagem capturada:",
-            canvas.width,
-            "x",
-            canvas.height
-        );
-
-        const contexto = canvas.getContext("2d");
-
-        contexto.drawImage(
-            camera,
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        );
-
+        canvas.getContext('2d').drawImage(camera, 0, 0, canvas.width, canvas.height);
         canvas.toBlob(function (blob) {
-
-            if (!blob) {
-
-                mensagem.textContent =
-                    "Erro ao capturar a imagem.";
-
-                return;
+            if (!blob) { mostrarMensagem('Erro ao capturar a imagem.', 'danger'); return; }
+            const img = new File([blob], 'folha_' + (imagensSelecionadas.length + 1) + '.jpg', { type: 'image/jpeg' });
+            adicionarImagem(img);
+            if (quantidadeQuestoes > 50 && imagensSelecionadas.length === 1) {
+                mostrarMensagem('Página 1 capturada. Posicione a página 2.', 'info');
             }
-
-            // Criar arquivo JPEG com a imagem capturada.
-            const imagem = new File(
-                [blob],
-                "folha_" + (imagensSelecionadas.length + 1) + ".jpg",
-                {
-                    type: "image/jpeg"
-                }
-            );
-
-            adicionarImagem(imagem);
-
-            if (
-                quantidadeQuestoes > 50 &&
-                imagensSelecionadas.length === 1
-            ) {
-
-                mensagem.textContent =
-                    "Primeira página capturada. Posicione a segunda página e capture novamente.";
-
-            } else {
-
-                mensagem.textContent =
-                    "Imagem capturada com sucesso.";
-
-            }
-
-        }, "image/jpeg", 0.98);
-
+        }, 'image/jpeg', 0.98);
     });
 
-
-    // SELECIONAR IMAGENS DO DISPOSITIVO
-
-    arquivoImagem.addEventListener("change", function () {
-
-        const arquivos = Array.from(
-            arquivoImagem.files
-        );
-
-        if (arquivos.length === 0) {
-            return;
-        }
-
-        const formatosPermitidos = [
-            "image/jpeg",
-            "image/png",
-            "image/webp"
-        ];
-
-        for (const arquivo of arquivos) {
-
-            if (!formatosPermitidos.includes(arquivo.type)) {
-
-                mensagem.textContent =
-                    "Selecione somente imagens PNG, JPG ou WEBP.";
-
-                arquivoImagem.value = "";
-
+    // UPLOAD
+    arquivoImagem.addEventListener('change', function () {
+        const arquivos = Array.from(arquivoImagem.files);
+        if (!arquivos.length) return;
+        const permitidos = ['image/jpeg', 'image/png', 'image/webp'];
+        for (const f of arquivos) {
+            if (!permitidos.includes(f.type)) {
+                mostrarMensagem('Selecione somente PNG, JPG ou WEBP.', 'danger');
+                arquivoImagem.value = '';
                 return;
             }
         }
-
         imagensSelecionadas = arquivos;
-
         atualizarImagens();
-
-        mensagem.textContent =
-            "Imagens selecionadas. Confira a ordem antes de reconhecer.";
-
+        mostrarMensagem('Imagens selecionadas. Confira a ordem antes de reconhecer.', 'info');
     });
 
-
-    // RECONHECER RESPOSTAS
-
-    enviarImagem.addEventListener("click", async function () {
-
+    // OMR
+    enviarImagem.addEventListener('click', async function () {
         const nome = nomeAluno.value.trim();
+        if (!nome) { mostrarMensagem('Informe o nome do aluno antes de continuar.', 'danger'); nomeAluno.focus(); return; }
 
-        if (!nome) {
-
-            mensagem.textContent =
-                "Informe o nome do aluno antes de continuar.";
-
-            nomeAluno.focus();
-
-            return;
-        }
-
-        const quantidadeEsperada =
-            quantidadeQuestoes <= 50 ? 1 : 2;
-
-        if (
-            imagensSelecionadas.length !== quantidadeEsperada
-        ) {
-
-            mensagem.textContent =
-                quantidadeEsperada === 1
-                    ? "Envie uma imagem da folha."
-                    : "Envie duas imagens: página 1 e página 2.";
-
+        const esperada = quantidadeQuestoes <= 50 ? 1 : 2;
+        if (imagensSelecionadas.length !== esperada) {
+            mostrarMensagem(esperada === 1 ? 'Envie uma imagem da folha.' : 'Envie duas imagens: página 1 e página 2.', 'danger');
             return;
         }
 
         const dados = new FormData();
+        dados.append('aluno_nome', nome);
+        imagensSelecionadas.forEach(function (img, i) { dados.append('imagens', img, 'pagina_' + (i + 1) + '.jpg'); });
 
-        dados.append("aluno_nome", nome);
-
-        imagensSelecionadas.forEach(function (imagem, indice) {
-
-            dados.append(
-                "imagens",
-                imagem,
-                "pagina_" + (indice + 1) + ".jpg"
-            );
-
-        });
-
-        enviarImagem.disabled = true;
-
-        mensagem.textContent =
-            "Enviando imagem e reconhecendo respostas...";
+        enviarImagem.disabled    = true;
+        enviarImagem.textContent = '⏳ Reconhecendo...';
+        mostrarMensagem('Enviando e reconhecendo respostas...', 'info');
 
         try {
+            const resp     = await fetch('/provas/' + provaId + '/receber-imagem', { method: 'POST', body: dados });
+            const resultado = await resp.json();
 
-            const resposta = await fetch(
-                `/provas/${provaId}/receber-imagem`,
-                {
-                    method: "POST",
-                    body: dados
-                }
-            );
+            if (!resp.ok) throw new Error(resultado.erro || 'Erro ao reconhecer as respostas.');
 
-            const resultado = await resposta.json();
+            const statusMap = {
+                reconhecida: { label: '✓', cls: 'reconhecida' },
+                em_branco:   { label: '○ branco', cls: 'duvida' },
+                dupla:       { label: '⚠ dupla',  cls: 'dupla'  },
+                duvida:      { label: '? dúvida',  cls: 'duvida' }
+            };
 
-            if (!resposta.ok) {
-
-                throw new Error(
-                    resultado.erro ||
-                    "Erro ao reconhecer as respostas."
-                );
-            }
-
-            // Preencher os campos com as respostas reconhecidas.
             resultado.respostas.forEach(function (item) {
+                const campo  = document.getElementById('questao_' + item.numero);
+                const status = document.getElementById('status_' + item.numero);
+                const item_div = document.getElementById('item_' + item.numero);
+                if (!campo) return;
 
-                const campo = document.getElementById(
-                    "questao_" + item.numero
-                );
+                campo.value = item.resposta || '';
 
-                const status = document.getElementById(
-                    "status_" + item.numero
-                );
-
-                if (!campo || !status) {
-                    return;
+                const s = statusMap[item.situacao] || { label: '?', cls: '' };
+                if (status) status.textContent = s.label;
+                if (item_div) {
+                    item_div.className = 'resposta-item ' + s.cls;
                 }
-
-                campo.value = item.resposta || "";
-
-                const situacoes = {
-
-                    reconhecida: "Resposta reconhecida",
-
-                    em_branco: "Questão em branco — confira",
-
-                    dupla: "Dupla marcação — confira",
-
-                    duvida: "Leitura duvidosa — confira"
-
-                };
-
-                const descricao =
-                    situacoes[item.situacao] ||
-                    "Confira a resposta.";
-
-                status.textContent =
-                    descricao +
-                    (
-                        item.resposta
-                            ? ": " + item.resposta
-                            : ""
-                    );
-
-                if (item.pontuacoes) {
-
-                    const pontuacoes = Object.entries(
-                        item.pontuacoes
-                    ).map(function ([alternativa, valor]) {
-
-                        return alternativa + ": " +
-                            Number(valor).toFixed(3);
-
-                    }).join(" | ");
-
-                    status.title =
-                        "Pontuações do reconhecimento: " +
-                        pontuacoes;
+                if (item.pontuacoes && status) {
+                    const pts = Object.entries(item.pontuacoes).map(function ([a, v]) { return a + ':' + Number(v).toFixed(3); }).join(' ');
+                    status.title = pts;
                 }
-
             });
 
-            // Sincronizar nome com o formulário.
             nomeAlunoManual.value = nome;
+            mostrarMensagem(resultado.mensagem, 'info');
+            formulario.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-            mensagem.textContent = resultado.mensagem;
-
-            // Levar o professor até as respostas.
-            formulario.scrollIntoView({
-
-                behavior: "smooth",
-
-                block: "start"
-
-            });
-
-        } catch (erro) {
-
-            mensagem.textContent = erro.message;
-
-            console.error(
-                "Erro no reconhecimento:",
-                erro
-            );
-
+        } catch (e) {
+            mostrarMensagem(e.message, 'danger');
         } finally {
-
-            enviarImagem.disabled = false;
-
+            enviarImagem.disabled    = false;
+            enviarImagem.textContent = '🔍 Reconhecer respostas';
         }
-
     });
 
-
-    // SINCRONIZAR NOME NA CORREÇÃO MANUAL
-
-    formulario.addEventListener("submit", function (evento) {
-
+    // SUBMIT manual
+    formulario.addEventListener('submit', function (e) {
         nomeAlunoManual.value = nomeAluno.value.trim();
-
         if (!nomeAlunoManual.value) {
-
-            evento.preventDefault();
-
-            alert("Informe o nome do aluno.");
-
+            e.preventDefault();
+            mostrarMensagem('Informe o nome do aluno.', 'danger');
             nomeAluno.focus();
         }
-
     });
 
-
-    // LIBERAR CÂMERA AO SAIR DA PÁGINA
-
-    window.addEventListener("beforeunload", function () {
-
-        if (fluxoCamera) {
-
-            fluxoCamera.getTracks().forEach(function (trilha) {
-
-                trilha.stop();
-
-            });
-
-        }
-
-        if (urlPreview) {
-
-            URL.revokeObjectURL(urlPreview);
-
-        }
-
+    // Liberar câmera ao sair
+    window.addEventListener('beforeunload', function () {
+        if (fluxoCamera) fluxoCamera.getTracks().forEach(function (t) { t.stop(); });
+        if (urlPreview) URL.revokeObjectURL(urlPreview);
     });
-
 </script>
 
 {% endblock %}

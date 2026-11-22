@@ -1,86 +1,94 @@
-
 {% extends "base.html" %}
+
+{% block title %}Histórico de correções{% endblock %}
 
 {% block conteudo %}
 
-<h2>Histórico de correções</h2>
+<div class="page-header">
+    <h1>📜 Histórico de correções</h1>
+    <p>Todas as correções realizadas no sistema.</p>
+</div>
 
 {% if resultados %}
 
-    <table border="1" cellpadding="8">
-
-        <tr>
-            <th>Aluno</th>
-            <th>Prova</th>
-            <th>Acertos</th>
-            <th>Erros</th>
-            <th>Aproveitamento</th>
-            <th>Nota</th>
-            <th>Resultado</th>
-            <th>Excluir</th>
-        </tr>
-
-        {% for resultado in resultados %}
-
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
             <tr>
-
-                <td>{{ resultado.aluno_nome }}</td>
-
-                <td>{{ resultado.nome_prova }}</td>
-
-                <td>
-                    {{ resultado.acertos }}/{{ resultado.total_questoes }}
-                </td>
-
-                <td>{{ resultado.erros }}</td>
-
-                <td>
-                    {{ "%.2f"|format(resultado.percentual) }}%
-                </td>
-
-                <td>
-                    {{ "%.2f"|format(resultado.nota) }}
-                </td>
-
-                <td>
-                    <a href="{{ url_for(
-                        'results.show_result',
-                        result_id=resultado.id
-                    ) }}">
-                        Ver detalhes
-                    </a>
-                </td>
-
-                <td>
-
-                    <form
-                        method="POST"
-                        action="{{ url_for(
-                            'results.delete_result',
-                            result_id=resultado.id
-                        ) }}"
-                        onsubmit="return confirm(
-                            'Tem certeza que deseja excluir esta correção?'
-                        );"
-                    >
-
-                        <button type="submit">
-                            Excluir
-                        </button>
-
-                    </form>
-
-                </td>
-
+                <th>Aluno</th>
+                <th>Prova</th>
+                <th>Acertos</th>
+                <th>Erros</th>
+                <th>Aproveitamento</th>
+                <th>Nota</th>
+                <th>Ações</th>
             </tr>
+        </thead>
+        <tbody>
+            {% for resultado in resultados %}
+            {% set pct = resultado.percentual %}
+            <tr>
+                <td class="strong">{{ resultado.aluno_nome }}</td>
 
-        {% endfor %}
+                <td style="color:var(--text-secondary);">{{ resultado.nome_prova }}</td>
 
+                <td>
+                    <span style="color:var(--success);font-weight:600;">{{ resultado.acertos }}</span>
+                    <span style="color:var(--text-muted);">/{{ resultado.total_questoes }}</span>
+                </td>
+
+                <td style="color:var(--danger);font-weight:600;">{{ resultado.erros }}</td>
+
+                <td>
+                    <div style="display:flex;align-items:center;gap:0.5rem;min-width:120px;">
+                        <div class="progress-bar-wrap" style="flex:1;height:6px;">
+                            <div class="progress-bar-fill" style="width:{{ pct }}%;
+                                {% if pct >= 70 %}background:linear-gradient(90deg,#059669,#10b981);
+                                {% elif pct >= 50 %}background:linear-gradient(90deg,#d97706,#f59e0b);
+                                {% else %}background:linear-gradient(90deg,#dc2626,#ef4444);{% endif %}
+                            "></div>
+                        </div>
+                        <span style="font-size:0.82rem;color:var(--text-secondary);white-space:nowrap;">
+                            {{ "%.1f"|format(pct) }}%
+                        </span>
+                    </div>
+                </td>
+
+                <td>
+                    <span class="badge {% if pct >= 70 %}badge-success{% elif pct >= 50 %}badge-warning{% else %}badge-danger{% endif %}">
+                        {{ "%.2f"|format(resultado.nota) }}
+                    </span>
+                </td>
+
+                <td>
+                    <div style="display:flex;gap:0.5rem;align-items:center;">
+                        <a href="{{ url_for('results.show_result', result_id=resultado.id) }}" class="btn btn-ghost btn-sm">
+                            🔍 Ver
+                        </a>
+                        <form
+                            method="POST"
+                            action="{{ url_for('results.delete_result', result_id=resultado.id) }}"
+                            style="display:inline;"
+                            onsubmit="return confirm('Tem certeza que deseja excluir esta correção?');"
+                        >
+                            <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
     </table>
+</div>
 
 {% else %}
 
-    <p>Nenhuma correção realizada.</p>
+<div class="empty-state">
+    <div class="empty-icon">📭</div>
+    <h3>Nenhuma correção realizada</h3>
+    <p>Corrija uma prova para visualizar o histórico.</p>
+    <a href="{{ url_for('provas.listar_provas') }}" class="btn btn-primary">Ver provas</a>
+</div>
 
 {% endif %}
 

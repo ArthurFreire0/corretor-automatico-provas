@@ -1,96 +1,131 @@
-
 {% extends "base.html" %}
+
+{% block title %}Resultado — {{ resultado.aluno_nome }}{% endblock %}
 
 {% block conteudo %}
 
-<h2>Resultado da correção</h2>
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('provas.listar_provas') }}">Início</a>
+        <span>›</span>
+        <a href="{{ url_for('results.list_results') }}">Histórico</a>
+        <span>›</span>
+        <span>Resultado</span>
+    </div>
+    <h1>🏆 Resultado da correção</h1>
+    <p>{{ resultado.aluno_nome }} &nbsp;·&nbsp; {{ resultado.nome_prova }}</p>
+</div>
 
-<h3>{{ resultado.aluno_nome }}</h3>
+<!-- Nota destaque -->
+{% set pct = resultado.percentual %}
+<div class="nota-destaque card" style="margin-bottom:1.5rem; text-align:center; padding:2rem;">
+    <div style="font-size:0.85rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:0.5rem;">Nota final</div>
+    <div style="font-size:3.5rem;font-weight:800;line-height:1;
+        {% if pct >= 70 %}color:var(--success);
+        {% elif pct >= 50 %}color:var(--warning);
+        {% else %}color:var(--danger);{% endif %}
+    ">
+        {{ "%.2f"|format(resultado.nota) }}
+    </div>
+    <div style="font-size:1rem;color:var(--text-secondary);margin-top:0.4rem;">
+        de {{ "%.2f"|format(resultado.valor_total) }} pontos
+    </div>
 
-<p>
-    Prova: {{ resultado.nome_prova }}
-</p>
+    <!-- Progress bar -->
+    <div class="progress-bar-wrap" style="margin:1.25rem auto 0; max-width:400px;">
+        <div
+            class="progress-bar-fill"
+            style="width:{{ resultado.percentual }}%;
+            {% if pct >= 70 %}background:linear-gradient(90deg,#059669,#10b981);
+            {% elif pct >= 50 %}background:linear-gradient(90deg,#d97706,#f59e0b);
+            {% else %}background:linear-gradient(90deg,#dc2626,#ef4444);{% endif %}
+            "
+        ></div>
+    </div>
+    <div style="font-size:0.85rem;color:var(--text-muted);margin-top:0.5rem;">
+        {{ "%.1f"|format(resultado.percentual) }}% de aproveitamento
+    </div>
+</div>
 
-<hr>
+<!-- Stats -->
+<div class="stats-grid" style="margin-bottom:2rem;">
+    <div class="stat-card">
+        <div class="stat-value" style="color:var(--success);">{{ resultado.acertos }}</div>
+        <div class="stat-label">Acertos</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="color:var(--danger);">{{ resultado.erros }}</div>
+        <div class="stat-label">Erros</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="color:var(--text-muted);">{{ resultado.em_branco }}</div>
+        <div class="stat-label">Em branco</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ resultado.total_questoes }}</div>
+        <div class="stat-label">Total</div>
+    </div>
+</div>
 
-<h3>Resumo da correção</h3>
+<!-- Tabela detalhada -->
+<div class="card">
+    <div class="card-title" style="margin-bottom:1.25rem;">📋 Detalhamento por questão</div>
 
-<p>
-    Total de questões:
-    {{ resultado.total_questoes }}
-</p>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Questão</th>
+                    <th>Gabarito</th>
+                    <th>Resposta</th>
+                    <th>Situação</th>
+                    <th>Peso</th>
+                    <th>Pontos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detalhe in detalhes %}
+                <tr>
+                    <td><strong style="color:var(--text-primary);">{{ detalhe.numero_questao }}</strong></td>
+                    <td>
+                        <span class="badge badge-primary">{{ detalhe.resposta_correta }}</span>
+                    </td>
+                    <td>
+                        {% if detalhe.resposta_aluno %}
+                            <span class="badge {% if detalhe.resposta_aluno == detalhe.resposta_correta %}badge-success{% else %}badge-danger{% endif %}">
+                                {{ detalhe.resposta_aluno }}
+                            </span>
+                        {% else %}
+                            <span class="badge badge-warning">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if detalhe.situacao == 'Acerto' %}
+                            <span class="badge badge-success">✓ Acerto</span>
+                        {% elif detalhe.situacao == 'Erro' %}
+                            <span class="badge badge-danger">✗ Erro</span>
+                        {% else %}
+                            <span class="badge badge-warning">○ Branco</span>
+                        {% endif %}
+                    </td>
+                    <td style="color:var(--text-muted);">{{ "%.3f"|format(detalhe.peso) }}</td>
+                    <td style="font-weight:600;{% if detalhe.pontos_obtidos > 0 %}color:var(--success);{% else %}color:var(--text-muted);{% endif %}">
+                        {{ "%.3f"|format(detalhe.pontos_obtidos) }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 
-<p>
-    Acertos: {{ resultado.acertos }}
-</p>
-
-<p>
-    Erros: {{ resultado.erros }}
-</p>
-
-<p>
-    Questões em branco: {{ resultado.em_branco }}
-</p>
-
-<p>
-    Aproveitamento:
-    {{ "%.2f"|format(resultado.percentual) }}%
-</p>
-
-<h2>
-    Nota:
-    {{ "%.2f"|format(resultado.nota) }}
-    /
-    {{ "%.2f"|format(resultado.valor_total) }}
-</h2>
-
-<hr>
-
-<h3>Detalhamento das respostas</h3>
-
-<table border="1" cellpadding="8">
-
-    <tr>
-        <th>Questão</th>
-        <th>Gabarito</th>
-        <th>Resposta do aluno</th>
-        <th>Situação</th>
-        <th>Peso</th>
-        <th>Pontos obtidos</th>
-    </tr>
-
-    {% for detalhe in detalhes %}
-
-        <tr>
-
-            <td>{{ detalhe.numero_questao }}</td>
-
-            <td>{{ detalhe.resposta_correta }}</td>
-
-            <td>
-                {{ detalhe.resposta_aluno or "-" }}
-            </td>
-
-            <td>{{ detalhe.situacao }}</td>
-
-            <td>
-                {{ "%.4f"|format(detalhe.peso) }}
-            </td>
-
-            <td>
-                {{ "%.4f"|format(detalhe.pontos_obtidos) }}
-            </td>
-
-        </tr>
-
-    {% endfor %}
-
-</table>
-
-<br>
-
-<a href="{{ url_for('provas.listar_provas') }}">
-    Voltar às provas
-</a>
+<div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1.5rem;">
+    <a href="{{ url_for('provas.listar_provas') }}" class="btn btn-primary">
+        ← Voltar às provas
+    </a>
+    <a href="{{ url_for('results.list_results') }}" class="btn btn-ghost">
+        📋 Ver histórico
+    </a>
+</div>
 
 {% endblock %}

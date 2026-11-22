@@ -1,59 +1,100 @@
-
-
 {% extends "base.html" %}
+
+{% block title %}Nova Prova — Corretor de Provas{% endblock %}
 
 {% block conteudo %}
 
-<h2>Cadastrar nova prova</h2>
-
-<form method="POST">
-
-    <div>
-        <label>Nome da prova:</label>
-
-        <input
-            type="text"
-            name="nome"
-            placeholder="Ex: Prova de Matemática"
-            required
-        >
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('provas.listar_provas') }}">Início</a>
+        <span>›</span>
+        <span>Nova prova</span>
     </div>
+    <h1>✏️ Cadastrar nova prova</h1>
+    <p>Preencha os dados abaixo para criar uma nova prova.</p>
+</div>
 
-    <br>
+<div class="card" style="max-width: 540px;">
 
-    <div>
-        <label>Quantidade de questões:</label>
+    <form method="POST" id="form-nova-prova">
 
-        <input
-            type="number"
-            name="quantidade_questoes"
-            min="1"
-            max="100"
-            required
-        >
-    </div>
+        <div class="form-group">
+            <label class="form-label" for="nome">Nome da prova</label>
+            <input
+                type="text"
+                id="nome"
+                name="nome"
+                class="form-control"
+                placeholder="Ex: Prova de Matemática — 1º Bimestre"
+                required
+                autofocus
+            >
+        </div>
 
-    <br>
+        <div class="form-row">
 
-    <div>
-        <label>Valor total da prova:</label>
+            <div class="form-group">
+                <label class="form-label" for="quantidade_questoes">Nº de questões</label>
+                <input
+                    type="number"
+                    id="quantidade_questoes"
+                    name="quantidade_questoes"
+                    class="form-control"
+                    min="1"
+                    max="100"
+                    placeholder="1 – 100"
+                    required
+                >
+                <span class="form-hint">Máximo: 100 questões</span>
+            </div>
 
-        <input
-            type="number"
-            name="valor_total"
-            min="0.01"
-            step="0.01"
-            placeholder="Ex: 10.00"
-            required
-        >
-    </div>
+            <div class="form-group">
+                <label class="form-label" for="valor_total">Valor total (pontos)</label>
+                <input
+                    type="number"
+                    id="valor_total"
+                    name="valor_total"
+                    class="form-control"
+                    min="0.01"
+                    step="0.01"
+                    placeholder="Ex: 10.00"
+                    required
+                >
+                <span class="form-hint" id="peso-preview"></span>
+            </div>
 
-    <br>
+        </div>
 
-    <button type="submit">
-        Cadastrar prova
-    </button>
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.5rem;">
+            <button type="submit" class="btn btn-primary btn-lg">
+                Próximo: Cadastrar gabarito →
+            </button>
+            <a href="{{ url_for('provas.listar_provas') }}" class="btn btn-ghost btn-lg">
+                Cancelar
+            </a>
+        </div>
 
-</form>
+    </form>
+
+</div>
+
+<script>
+    const qtd   = document.getElementById('quantidade_questoes');
+    const valor = document.getElementById('valor_total');
+    const hint  = document.getElementById('peso-preview');
+
+    function calcPeso() {
+        const q = parseFloat(qtd.value);
+        const v = parseFloat(valor.value);
+        if (q > 0 && v > 0) {
+            hint.textContent = 'Peso por questão: ' + (v / q).toFixed(4) + ' pts';
+        } else {
+            hint.textContent = '';
+        }
+    }
+
+    qtd.addEventListener('input', calcPeso);
+    valor.addEventListener('input', calcPeso);
+</script>
 
 {% endblock %}
