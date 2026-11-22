@@ -1,0 +1,172 @@
+
+{% extends "base.html" %}
+
+{% block conteudo %}
+
+<h2>Cadastrar gabarito oficial</h2>
+
+<p>
+    Prova: <strong>{{ prova.nome }}</strong>
+</p>
+
+<p>
+    Quantidade de questões: {{ prova.quantidade_questoes }}
+</p>
+
+<p>
+    Valor total: {{ "%.2f"|format(prova.valor_total) }} pontos
+</p>
+
+<p>
+    <strong>
+        Cada questão vale:
+        {{ "%.4f"|format(peso_questao) }} pontos
+    </strong>
+</p>
+
+<hr>
+
+<h3>Opção 1 - Cadastro por sequência</h3>
+
+<p>
+    Digite ou cole as alternativas na ordem das questões.
+    Você pode separar as letras por espaços, vírgulas ou quebras de linha.
+</p>
+
+<p>
+    Exemplo: ABCDEACDBE
+</p>
+
+<form method="POST">
+
+    <input type="hidden" name="acao" value="sequencia">
+
+    <p>
+        <label for="sequencia">
+            <strong>Sequência de respostas:</strong>
+        </label>
+    </p>
+
+    <textarea
+        id="sequencia"
+        name="sequencia"
+        rows="5"
+        cols="50"
+        placeholder="Exemplo: ABCDEACDBE"
+        required
+    ></textarea>
+
+    <p>
+        <button type="submit">
+            Cadastrar sequência
+        </button>
+    </p>
+
+</form>
+
+<hr>
+
+<h3>Opção 2 - Importar arquivo Excel</h3>
+
+<p>
+    Importe uma planilha com duas colunas:
+    número da questão e alternativa correta.
+</p>
+
+<p>
+    Exemplo de organização:
+</p>
+
+<table border="1" cellpadding="6" cellspacing="0">
+    <tr>
+        <th>Questão</th>
+        <th>Resposta</th>
+    </tr>
+    <tr>
+        <td>1</td>
+        <td>A</td>
+    </tr>
+    <tr>
+        <td>2</td>
+        <td>C</td>
+    </tr>
+    <tr>
+        <td>3</td>
+        <td>B</td>
+    </tr>
+</table>
+
+<p>
+    A planilha pode ter um cabeçalho na primeira linha.
+    Salve o arquivo no formato .xlsx.
+</p>
+
+<form method="POST" enctype="multipart/form-data">
+
+    <input type="hidden" name="acao" value="excel">
+
+    <p>
+        <input
+            type="file"
+            name="arquivo_excel"
+            accept=".xlsx"
+            required
+        >
+    </p>
+
+    <button type="submit">
+        Importar gabarito do Excel
+    </button>
+
+</form>
+
+<hr>
+
+<h3>Opção 3 - Cadastro manual</h3>
+
+<p>
+    Selecione a alternativa correta de cada questão.
+</p>
+
+<form method="POST">
+
+    <input type="hidden" name="acao" value="manual">
+
+    {% for numero in range(1, prova.quantidade_questoes + 1) %}
+
+        <p>
+            <strong>Questão {{ numero }}:</strong>
+
+            <select name="questao_{{ numero }}" required>
+
+                <option value="">Selecione</option>
+
+                {% for alternativa in ["A", "B", "C", "D", "E"] %}
+
+                    <option
+                        value="{{ alternativa }}"
+                        {% if respostas_atuais.get(numero) == alternativa %}
+                            selected
+                        {% endif %}
+                    >
+                        {{ alternativa }}
+                    </option>
+
+                {% endfor %}
+
+            </select>
+
+            <small>
+                ({{ "%.4f"|format(peso_questao) }} pontos)
+            </small>
+        </p>
+
+    {% endfor %}
+
+    <button type="submit">
+        Salvar gabarito manual
+    </button>
+
+</form>
+
+{% endblock %}

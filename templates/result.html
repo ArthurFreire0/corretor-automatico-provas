@@ -1,0 +1,96 @@
+
+{% extends "base.html" %}
+
+{% block conteudo %}
+
+<h2>Resultado da correção</h2>
+
+<h3>{{ resultado.aluno_nome }}</h3>
+
+<p>
+    Prova: {{ resultado.nome_prova }}
+</p>
+
+<hr>
+
+<h3>Resumo da correção</h3>
+
+<p>
+    Total de questões:
+    {{ resultado.total_questoes }}
+</p>
+
+<p>
+    Acertos: {{ resultado.acertos }}
+</p>
+
+<p>
+    Erros: {{ resultado.erros }}
+</p>
+
+<p>
+    Questões em branco: {{ resultado.em_branco }}
+</p>
+
+<p>
+    Aproveitamento:
+    {{ "%.2f"|format(resultado.percentual) }}%
+</p>
+
+<h2>
+    Nota:
+    {{ "%.2f"|format(resultado.nota) }}
+    /
+    {{ "%.2f"|format(resultado.valor_total) }}
+</h2>
+
+<hr>
+
+<h3>Detalhamento das respostas</h3>
+
+<table border="1" cellpadding="8">
+
+    <tr>
+        <th>Questão</th>
+        <th>Gabarito</th>
+        <th>Resposta do aluno</th>
+        <th>Situação</th>
+        <th>Peso</th>
+        <th>Pontos obtidos</th>
+    </tr>
+
+    {% for detalhe in detalhes %}
+
+        <tr>
+
+            <td>{{ detalhe.numero_questao }}</td>
+
+            <td>{{ detalhe.resposta_correta }}</td>
+
+            <td>
+                {{ detalhe.resposta_aluno or "-" }}
+            </td>
+
+            <td>{{ detalhe.situacao }}</td>
+
+            <td>
+                {{ "%.4f"|format(detalhe.peso) }}
+            </td>
+
+            <td>
+                {{ "%.4f"|format(detalhe.pontos_obtidos) }}
+            </td>
+
+        </tr>
+
+    {% endfor %}
+
+</table>
+
+<br>
+
+<a href="{{ url_for('provas.listar_provas') }}">
+    Voltar às provas
+</a>
+
+{% endblock %}

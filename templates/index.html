@@ -1,0 +1,74 @@
+
+{% extends "base.html" %}
+
+{% block conteudo %}
+
+<h2>Provas cadastradas</h2>
+
+<a href="{{ url_for('provas.cadastrar_prova') }}">
+    Cadastrar nova prova
+</a>
+
+<hr>
+
+{% if provas %}
+
+    <ul>
+
+        {% for prova in provas %}
+
+            <li>
+
+                <strong>{{ prova.nome }}</strong>
+
+                - {{ prova.quantidade_questoes }} questões
+
+                - Valor:
+                {{ "%.2f"|format(prova.valor_total) }} pontos
+
+                - <a href="{{ url_for(
+                    'provas.detalhes_prova',
+                    prova_id=prova.id
+                ) }}">
+                    Ver detalhes
+                </a>
+
+                - <a href="{{ url_for(
+                    'results.corr_prova',
+                    prova_id=prova.id
+                ) }}">
+                    Corrigir prova
+                </a>
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'provas.excluir_prova',
+                        prova_id=prova.id
+                    ) }}"
+                    style="display:inline;"
+
+                    onsubmit="return confirm(
+                        'Deseja realmente excluir esta prova e seus resultados?'
+                    );"
+                >
+
+                    <button type="submit">
+                        Excluir
+                    </button>
+
+                </form>
+
+            </li>
+
+        {% endfor %}
+
+    </ul>
+
+{% else %}
+
+    <p>Nenhuma prova cadastrada.</p>
+
+{% endif %}
+
+{% endblock %}

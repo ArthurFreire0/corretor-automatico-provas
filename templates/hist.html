@@ -1,0 +1,87 @@
+
+{% extends "base.html" %}
+
+{% block conteudo %}
+
+<h2>Histórico de correções</h2>
+
+{% if resultados %}
+
+    <table border="1" cellpadding="8">
+
+        <tr>
+            <th>Aluno</th>
+            <th>Prova</th>
+            <th>Acertos</th>
+            <th>Erros</th>
+            <th>Aproveitamento</th>
+            <th>Nota</th>
+            <th>Resultado</th>
+            <th>Excluir</th>
+        </tr>
+
+        {% for resultado in resultados %}
+
+            <tr>
+
+                <td>{{ resultado.aluno_nome }}</td>
+
+                <td>{{ resultado.nome_prova }}</td>
+
+                <td>
+                    {{ resultado.acertos }}/{{ resultado.total_questoes }}
+                </td>
+
+                <td>{{ resultado.erros }}</td>
+
+                <td>
+                    {{ "%.2f"|format(resultado.percentual) }}%
+                </td>
+
+                <td>
+                    {{ "%.2f"|format(resultado.nota) }}
+                </td>
+
+                <td>
+                    <a href="{{ url_for(
+                        'results.show_result',
+                        result_id=resultado.id
+                    ) }}">
+                        Ver detalhes
+                    </a>
+                </td>
+
+                <td>
+
+                    <form
+                        method="POST"
+                        action="{{ url_for(
+                            'results.delete_result',
+                            result_id=resultado.id
+                        ) }}"
+                        onsubmit="return confirm(
+                            'Tem certeza que deseja excluir esta correção?'
+                        );"
+                    >
+
+                        <button type="submit">
+                            Excluir
+                        </button>
+
+                    </form>
+
+                </td>
+
+            </tr>
+
+        {% endfor %}
+
+    </table>
+
+{% else %}
+
+    <p>Nenhuma correção realizada.</p>
+
+{% endif %}
+
+{% endblock %}

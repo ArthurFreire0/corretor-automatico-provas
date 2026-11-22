@@ -1,0 +1,69 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Corretor Automático de Provas</title>
+</head>
+
+<body>
+
+    <header>
+
+        <h1>Corretor Automático de Provas</h1>
+
+        <nav>
+
+            <a href="{{ url_for('provas.listar_provas') }}">
+                Início
+            </a>
+
+            |
+
+            <a href="{{ url_for('provas.cadastrar_prova') }}">
+                Nova prova
+            </a>
+
+            |
+
+            <a href="{{ url_for('results.listar_provas_corrigidas') }}">
+                Provas corrigidas
+            </a>
+
+            |
+
+            <a href="{{ url_for('results.list_results') }}">
+                Histórico
+            </a>
+
+        </nav>
+
+    </header>
+
+    <hr>
+
+    {% with mensagens = get_flashed_messages(with_categories=true) %}
+
+        {% for categoria, mensagem in mensagens %}
+
+            <p>
+                <strong>{{ mensagem }}</strong>
+            </p>
+
+        {% endfor %}
+
+    {% endwith %}
+
+    <main>
+
+        {% block conteudo %}
+        {% endblock %}
+
+    </main>
+
+</body>
+
+</html>

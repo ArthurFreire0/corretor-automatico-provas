@@ -1,0 +1,59 @@
+
+{% extends "base.html" %}
+
+{% block conteudo %}
+
+<h2>Provas corrigidas</h2>
+
+<p>
+    Selecione uma prova para consultar os alunos que possuem correção cadastrada.
+</p>
+
+{% if provas %}
+
+    <table border="1" cellpadding="8">
+
+        <tr>
+            <th>Prova</th>
+            <th>Questões</th>
+            <th>Valor total</th>
+            <th>Alunos corrigidos</th>
+            <th>Ação</th>
+        </tr>
+
+        {% for prova in provas %}
+
+            <tr>
+
+                <td>{{ prova.nome }}</td>
+
+                <td>{{ prova.quantidade_questoes }}</td>
+
+                <td>
+                    {{ "%.2f"|format(prova.valor_total) }}
+                </td>
+
+                <td>{{ prova.total_alunos }}</td>
+
+                <td>
+                    <a href="{{ url_for(
+                        'results.alunos_prova',
+                        prova_id=prova.id
+                    ) }}">
+                        Ver alunos
+                    </a>
+                </td>
+
+            </tr>
+
+        {% endfor %}
+
+    </table>
+
+{% else %}
+
+    <p>Nenhuma prova cadastrada.</p>
+
+{% endif %}
+
+{% endblock %}

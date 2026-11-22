@@ -1,0 +1,741 @@
+
+{% extends "base.html" %}
+
+{% block conteudo %}
+
+<h2>Corrigir prova</h2>
+
+<h3>{{ prova.nome }}</h3>
+
+<p>
+    Quantidade de questões:
+    {{ prova.quantidade_questoes }}
+</p>
+
+<p>
+    Valor total:
+    {{ "%.2f"|format(prova.valor_total) }} pontos
+</p>
+
+<hr>
+
+<h3>Identificação do aluno</h3>
+
+<label for="aluno_nome">Nome do aluno:</label>
+
+<input
+    type="text"
+    id="aluno_nome"
+    placeholder="Digite o nome do aluno"
+    required
+>
+
+<input
+    type="hidden"
+    id="prova-id"
+    value="{{ prova.id }}"
+>
+
+<input
+    type="hidden"
+    id="quantidade-questoes"
+    value="{{ prova.quantidade_questoes }}"
+>
+
+<hr>
+
+<h3>Corrigir por imagem</h3>
+
+<p>
+    Utilize a câmera ou selecione a imagem da folha de respostas preenchida.
+</p>
+
+{% if prova.quantidade_questoes > 50 %}
+
+<p>
+    <strong>Atenção:</strong>
+    esta prova possui duas páginas. Envie as imagens na ordem:
+    primeiro a página 1 e depois a página 2.
+</p>
+
+{% else %}
+
+<p>
+    Esta prova utiliza apenas uma página.
+</p>
+
+{% endif %}
+
+<div>
+
+    <button type="button" id="abrir-camera">
+        Abrir câmera
+    </button>
+
+    <button
+        type="button"
+        id="fechar-camera"
+        disabled
+    >
+        Fechar câmera
+    </button>
+
+</div>
+
+<br>
+
+<video
+    id="camera"
+    autoplay
+    playsinline
+    style="display:none; width:100%; max-width:600px; border:1px solid #ccc;"
+></video>
+
+<br>
+
+<button
+    type="button"
+    id="capturar"
+    style="display:none;"
+>
+    Capturar página
+</button>
+
+<hr>
+
+<label for="arquivo-imagem">
+    Ou selecione a(s) imagem(ns) do dispositivo:
+</label>
+
+<br><br>
+
+<input
+    type="file"
+    id="arquivo-imagem"
+    accept="image/png,image/jpeg,image/webp"
+    multiple
+>
+
+<p id="quantidade-imagens">
+    Nenhuma imagem selecionada.
+</p>
+
+<img
+    id="preview"
+    alt="Pré-visualização da folha"
+    style="display:none; width:100%; max-width:500px; border:1px solid #ccc;"
+>
+
+<br><br>
+
+<button
+    type="button"
+    id="enviar-imagem"
+    style="display:none;"
+>
+    Reconhecer respostas
+</button>
+
+<p id="mensagem-imagem"></p>
+
+<canvas id="canvas" style="display:none;"></canvas>
+
+<hr>
+
+<h3>Respostas do aluno</h3>
+
+<p>
+    As respostas reconhecidas serão preenchidas abaixo.
+    Confira e altere qualquer alternativa que estiver incorreta.
+</p>
+
+<form
+    method="POST"
+    action="{{ url_for('results.corr_prova', prova_id=prova.id) }}"
+    id="form-correcao"
+>
+
+    <input
+        type="hidden"
+        name="aluno_nome"
+        id="aluno_nome_manual"
+    >
+
+    {% for questao in questoes %}
+
+        <div>
+
+            <p>
+                <strong>Questão {{ questao.numero }}</strong>
+            </p>
+
+            <p>
+                Valor:
+                {{ "%.4f"|format(questao.peso) }} pontos
+            </p>
+
+            <select
+                name="questao_{{ questao.numero }}"
+                id="questao_{{ questao.numero }}"
+            >
+
+                <option value="">Em branco</option>
+
+                {% for alternativa in ["A", "B", "C", "D", "E"] %}
+
+                    <option value="{{ alternativa }}">
+                        {{ alternativa }}
+                    </option>
+
+                {% endfor %}
+
+            </select>
+
+            <p
+                id="status_{{ questao.numero }}"
+                style="font-size:13px; color:#555;"
+            >
+                Aguardando reconhecimento ou preenchimento manual.
+            </p>
+
+            <hr>
+
+        </div>
+
+    {% endfor %}
+
+    <button type="submit">
+        Corrigir manualmente
+    </button>
+
+</form>
+
+<script>
+
+
+    // ELEMENTOS DA PÁGINA
+    const provaId = document.getElementById("prova-id").value;
+
+    const quantidadeQuestoes = Number(
+        document.getElementById("quantidade-questoes").value
+    );
+
+    const camera = document.getElementById("camera");
+    const canvas = document.getElementById("canvas");
+
+    const abrirCamera = document.getElementById("abrir-camera");
+    const fecharCamera = document.getElementById("fechar-camera");
+    const capturar = document.getElementById("capturar");
+
+    const arquivoImagem = document.getElementById("arquivo-imagem");
+    const preview = document.getElementById("preview");
+
+    const enviarImagem = document.getElementById("enviar-imagem");
+    const mensagem = document.getElementById("mensagem-imagem");
+
+    const quantidadeImagensTexto = document.getElementById(
+        "quantidade-imagens"
+    );
+
+    const nomeAluno = document.getElementById("aluno_nome");
+
+    const nomeAlunoManual = document.getElementById(
+        "aluno_nome_manual"
+    );
+
+    const formulario = document.getElementById("form-correcao");
+
+
+    // VARIÁVEIS
+    
+
+    let fluxoCamera = null;
+
+    let imagensSelecionadas = [];
+
+    let urlPreview = null;
+
+
+    
+    // ATUALIZAR PRÉ-VISUALIZAÇÃO
+
+    function atualizarImagens() {
+
+        if (urlPreview) {
+
+            URL.revokeObjectURL(urlPreview);
+
+            urlPreview = null;
+        }
+
+        if (imagensSelecionadas.length === 0) {
+
+            preview.style.display = "none";
+
+            quantidadeImagensTexto.textContent =
+                "Nenhuma imagem selecionada.";
+
+            enviarImagem.style.display = "none";
+
+            return;
+        }
+
+        urlPreview = URL.createObjectURL(
+            imagensSelecionadas[0]
+        );
+
+        preview.src = urlPreview;
+
+        preview.style.display = "block";
+
+        quantidadeImagensTexto.textContent =
+            imagensSelecionadas.length +
+            " imagem(ns) selecionada(s).";
+
+        enviarImagem.style.display = "inline-block";
+    }
+
+
+    // ADICIONAR IMAGEM
+
+    function adicionarImagem(blob) {
+
+        imagensSelecionadas.push(blob);
+
+        atualizarImagens();
+
+        mensagem.textContent =
+            "Página capturada. Total de imagens: " +
+            imagensSelecionadas.length;
+    }
+
+
+    // ABRIR CÂMERA COM MAIOR RESOLUÇÃO
+
+    abrirCamera.addEventListener("click", async function () {
+
+        if (
+            !navigator.mediaDevices ||
+            !navigator.mediaDevices.getUserMedia
+        ) {
+
+            mensagem.textContent =
+                "A câmera não está disponível neste endereço. Utilize HTTPS ou localhost.";
+
+            return;
+        }
+
+        try {
+
+            fluxoCamera = await navigator.mediaDevices.getUserMedia({
+
+                video: {
+
+                    facingMode: {
+                        ideal: "environment"
+                    },
+
+                    width: {
+                        ideal: 1920
+                    },
+
+                    height: {
+                        ideal: 1080
+                    }
+
+                },
+
+                audio: false
+
+            });
+
+            camera.srcObject = fluxoCamera;
+
+            await camera.play();
+
+            camera.style.display = "block";
+
+            capturar.style.display = "inline-block";
+
+            abrirCamera.disabled = true;
+
+            fecharCamera.disabled = false;
+
+            // Mostrar a resolução realmente fornecida pelo navegador.
+            const configuracao = fluxoCamera
+                .getVideoTracks()[0]
+                .getSettings();
+
+            console.log(
+                "Resolução da câmera:",
+                configuracao.width,
+                "x",
+                configuracao.height
+            );
+
+            mensagem.textContent =
+                "Câmera aberta. Resolução: " +
+                configuracao.width +
+                " x " +
+                configuracao.height +
+                ". Posicione a folha inteira na imagem.";
+
+        } catch (erro) {
+
+            mensagem.textContent =
+                "Não foi possível abrir a câmera. Verifique as permissões e a disponibilidade da câmera.";
+
+            console.error("Erro ao abrir câmera:", erro);
+        }
+
+    });
+
+
+    // FECHAR CÂMERA
+
+    fecharCamera.addEventListener("click", function () {
+
+        if (fluxoCamera) {
+
+            fluxoCamera.getTracks().forEach(function (trilha) {
+
+                trilha.stop();
+
+            });
+
+            fluxoCamera = null;
+        }
+
+        camera.srcObject = null;
+
+        camera.style.display = "none";
+
+        capturar.style.display = "none";
+
+        abrirCamera.disabled = false;
+
+        fecharCamera.disabled = true;
+
+        mensagem.textContent = "Câmera fechada.";
+    });
+
+
+    // CAPTURAR IMAGEM DA CÂMERA
+
+    capturar.addEventListener("click", function () {
+
+        if (!camera.videoWidth || !camera.videoHeight) {
+
+            mensagem.textContent =
+                "Aguarde a câmera iniciar.";
+
+            return;
+        }
+
+        canvas.width = camera.videoWidth;
+
+        canvas.height = camera.videoHeight;
+
+        console.log(
+            "Resolução da imagem capturada:",
+            canvas.width,
+            "x",
+            canvas.height
+        );
+
+        const contexto = canvas.getContext("2d");
+
+        contexto.drawImage(
+            camera,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+        canvas.toBlob(function (blob) {
+
+            if (!blob) {
+
+                mensagem.textContent =
+                    "Erro ao capturar a imagem.";
+
+                return;
+            }
+
+            // Criar arquivo JPEG com a imagem capturada.
+            const imagem = new File(
+                [blob],
+                "folha_" + (imagensSelecionadas.length + 1) + ".jpg",
+                {
+                    type: "image/jpeg"
+                }
+            );
+
+            adicionarImagem(imagem);
+
+            if (
+                quantidadeQuestoes > 50 &&
+                imagensSelecionadas.length === 1
+            ) {
+
+                mensagem.textContent =
+                    "Primeira página capturada. Posicione a segunda página e capture novamente.";
+
+            } else {
+
+                mensagem.textContent =
+                    "Imagem capturada com sucesso.";
+
+            }
+
+        }, "image/jpeg", 0.98);
+
+    });
+
+
+    // SELECIONAR IMAGENS DO DISPOSITIVO
+
+    arquivoImagem.addEventListener("change", function () {
+
+        const arquivos = Array.from(
+            arquivoImagem.files
+        );
+
+        if (arquivos.length === 0) {
+            return;
+        }
+
+        const formatosPermitidos = [
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+        ];
+
+        for (const arquivo of arquivos) {
+
+            if (!formatosPermitidos.includes(arquivo.type)) {
+
+                mensagem.textContent =
+                    "Selecione somente imagens PNG, JPG ou WEBP.";
+
+                arquivoImagem.value = "";
+
+                return;
+            }
+        }
+
+        imagensSelecionadas = arquivos;
+
+        atualizarImagens();
+
+        mensagem.textContent =
+            "Imagens selecionadas. Confira a ordem antes de reconhecer.";
+
+    });
+
+
+    // RECONHECER RESPOSTAS
+
+    enviarImagem.addEventListener("click", async function () {
+
+        const nome = nomeAluno.value.trim();
+
+        if (!nome) {
+
+            mensagem.textContent =
+                "Informe o nome do aluno antes de continuar.";
+
+            nomeAluno.focus();
+
+            return;
+        }
+
+        const quantidadeEsperada =
+            quantidadeQuestoes <= 50 ? 1 : 2;
+
+        if (
+            imagensSelecionadas.length !== quantidadeEsperada
+        ) {
+
+            mensagem.textContent =
+                quantidadeEsperada === 1
+                    ? "Envie uma imagem da folha."
+                    : "Envie duas imagens: página 1 e página 2.";
+
+            return;
+        }
+
+        const dados = new FormData();
+
+        dados.append("aluno_nome", nome);
+
+        imagensSelecionadas.forEach(function (imagem, indice) {
+
+            dados.append(
+                "imagens",
+                imagem,
+                "pagina_" + (indice + 1) + ".jpg"
+            );
+
+        });
+
+        enviarImagem.disabled = true;
+
+        mensagem.textContent =
+            "Enviando imagem e reconhecendo respostas...";
+
+        try {
+
+            const resposta = await fetch(
+                `/provas/${provaId}/receber-imagem`,
+                {
+                    method: "POST",
+                    body: dados
+                }
+            );
+
+            const resultado = await resposta.json();
+
+            if (!resposta.ok) {
+
+                throw new Error(
+                    resultado.erro ||
+                    "Erro ao reconhecer as respostas."
+                );
+            }
+
+            // Preencher os campos com as respostas reconhecidas.
+            resultado.respostas.forEach(function (item) {
+
+                const campo = document.getElementById(
+                    "questao_" + item.numero
+                );
+
+                const status = document.getElementById(
+                    "status_" + item.numero
+                );
+
+                if (!campo || !status) {
+                    return;
+                }
+
+                campo.value = item.resposta || "";
+
+                const situacoes = {
+
+                    reconhecida: "Resposta reconhecida",
+
+                    em_branco: "Questão em branco — confira",
+
+                    dupla: "Dupla marcação — confira",
+
+                    duvida: "Leitura duvidosa — confira"
+
+                };
+
+                const descricao =
+                    situacoes[item.situacao] ||
+                    "Confira a resposta.";
+
+                status.textContent =
+                    descricao +
+                    (
+                        item.resposta
+                            ? ": " + item.resposta
+                            : ""
+                    );
+
+                if (item.pontuacoes) {
+
+                    const pontuacoes = Object.entries(
+                        item.pontuacoes
+                    ).map(function ([alternativa, valor]) {
+
+                        return alternativa + ": " +
+                            Number(valor).toFixed(3);
+
+                    }).join(" | ");
+
+                    status.title =
+                        "Pontuações do reconhecimento: " +
+                        pontuacoes;
+                }
+
+            });
+
+            // Sincronizar nome com o formulário.
+            nomeAlunoManual.value = nome;
+
+            mensagem.textContent = resultado.mensagem;
+
+            // Levar o professor até as respostas.
+            formulario.scrollIntoView({
+
+                behavior: "smooth",
+
+                block: "start"
+
+            });
+
+        } catch (erro) {
+
+            mensagem.textContent = erro.message;
+
+            console.error(
+                "Erro no reconhecimento:",
+                erro
+            );
+
+        } finally {
+
+            enviarImagem.disabled = false;
+
+        }
+
+    });
+
+
+    // SINCRONIZAR NOME NA CORREÇÃO MANUAL
+
+    formulario.addEventListener("submit", function (evento) {
+
+        nomeAlunoManual.value = nomeAluno.value.trim();
+
+        if (!nomeAlunoManual.value) {
+
+            evento.preventDefault();
+
+            alert("Informe o nome do aluno.");
+
+            nomeAluno.focus();
+        }
+
+    });
+
+
+    // LIBERAR CÂMERA AO SAIR DA PÁGINA
+
+    window.addEventListener("beforeunload", function () {
+
+        if (fluxoCamera) {
+
+            fluxoCamera.getTracks().forEach(function (trilha) {
+
+                trilha.stop();
+
+            });
+
+        }
+
+        if (urlPreview) {
+
+            URL.revokeObjectURL(urlPreview);
+
+        }
+
+    });
+
+</script>
+
+{% endblock %}
